@@ -1,0 +1,33 @@
+---
+namespace: "jheddings"
+name: "github"
+version: "1.0.1"
+readme: README.md
+description: A collection of utilities for working with Github.
+
+repository: https://github.com/jheddings/ansible-github
+issues: https://github.com/jheddings/ansible-github/issues
+
+authors:
+  - jheddings <jheddings@gmail.com>
+
+license_file: LICENSE
+
+tags:
+  - cloud
+  - tools
+
+dependencies: {}
+
+build_ignore:
+  - .git
+  - .gitignore
+  - .github
+  - .venv
+  - .flake8
+  - .pre*
+  - build
+  - tests
+  - poetry.lock
+  - pyproject.toml
+  - Makefile
