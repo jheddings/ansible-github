@@ -3,16 +3,18 @@
 from typing import Union
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.jheddings.github.plugins.module_utils.mixin import (
+    GithubObjectMixin,
+)
 
 from github import Github, GithubException
 from github.AuthenticatedUser import AuthenticatedUser
 from github.GithubException import UnknownObjectException
-from github.GithubObject import GithubObject
 from github.Organization import Organization
 from github.Repository import Repository
 
 
-class GithubWrapper:
+class GithubWrapper(GithubObjectMixin):
     def __init__(self, owner: Union[AuthenticatedUser, Organization]):
         self.owner = owner
 
@@ -77,35 +79,6 @@ class GithubWrapper:
 
         else:
             result = self.edit(repo, config, check_mode=check_mode)
-
-        return result
-
-    def edit(self, obj: GithubObject, config: dict, check_mode=False):
-        result = {"changed": False, "data": obj.raw_data}
-
-        changed = False
-
-        # find out if anything needs to change
-        for key, val in config.items():
-            state = obj.raw_data.get(key, None)
-
-            if state == val:
-                continue
-
-            # any changes require an edit
-            changed = True
-            break
-
-        # look for the easy way out
-        if not changed:
-            return result
-
-        # apply current config
-        if not check_mode:
-            obj.edit(**config)
-
-        result["changed"] = True
-        result["repo"] = obj.raw_data
 
         return result
 

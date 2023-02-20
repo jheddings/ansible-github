@@ -16,6 +16,9 @@ pygithub = "^1.57"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.0.4"
 
+[tool.isort]
+profile = "black"
+
 [tool.black]
 line-length = 88
 
