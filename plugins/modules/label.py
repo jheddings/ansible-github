@@ -1,14 +1,13 @@
 """Configure a Github repository label."""
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.jheddings.github.plugins.module_utils.mixin import (
-    GithubObjectMixin,
-)
 
 from github import Github, GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
 from github.Repository import Repository
+
+from ..module_utils.mixin import GithubObjectMixin
 
 
 class GithubWrapper(GithubObjectMixin):

@@ -3,15 +3,14 @@
 from typing import Union
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.jheddings.github.plugins.module_utils.mixin import (
-    GithubObjectMixin,
-)
 
 from github import Github, GithubException
 from github.AuthenticatedUser import AuthenticatedUser
 from github.GithubException import UnknownObjectException
 from github.Organization import Organization
 from github.Repository import Repository
+
+from ..module_utils.mixin import GithubObjectMixin
 
 
 class GithubWrapper(GithubObjectMixin):
