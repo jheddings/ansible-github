@@ -16,10 +16,30 @@ def ghconnect(token, organization=None, base_url=None):
 
 
 class GithubObjectConfig:
+    def __eq__(self, other):
+        if isinstance(other, GithubObjectConfig):
+            return super.__eq__(other)
+
+        if isinstance(other, GithubObject):
+            return self.__eq__(other.raw_data)
+
+        if isinstance(other, dict):
+            for key, val in other.items():
+                if self[key] != val:
+                    return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __iter__(self):
         for name, value in self.__dict__.items():
             if ... != value:
                 yield name, value
+
+    def asdict(self):
+        return {k: v for k, v in self}
 
 
 class GithubObjectMixin:

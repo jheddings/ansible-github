@@ -1,15 +1,24 @@
 """Configure a Github repository label."""
 
+from dataclasses import dataclass
+
 from ansible.module_utils.basic import AnsibleModule
 
 from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
 
-from ..module_utils.mixin import GithubObjectMixin, ghconnect
+from ..module_utils.mixin import GithubObjectConfig, ghconnect
 
 
-class ModuleWrapper(GithubObjectMixin):
+@dataclass
+class LabelConfig(GithubObjectConfig):
+    name: str
+    color: str = ...
+    description: str = ...
+
+
+class ModuleWrapper:
     def __init__(self, repo_name, token=None, organization=None, base_url=None):
         owner = ghconnect(token, organization=organization, base_url=base_url)
 
@@ -37,23 +46,25 @@ class ModuleWrapper(GithubObjectMixin):
 
         return {"changed": True}
 
-    def present(self, config, check_mode=False):
+    def present(self, config: LabelConfig, check_mode=False):
         result = {"changed": False, "label": None}
 
-        label = self.get(name=config["name"])
+        label = self.get(name=config.name)
+        new_data = config.asdict()
 
         if label is None:
-            if check_mode:
-                result["label"] = config
-
-            else:
-                label = self.repo.create_label(**config)
-                result["label"] = label.raw_data
-
             result["changed"] = True
 
-        else:
-            result = self.edit(label, config, check_mode=check_mode)
+            if not check_mode:
+                label = self.repo.create_label(**new_data)
+
+        elif config != label:
+            result["changed"] = True
+
+            if not check_mode:
+                result = label.edit(**new_data)
+
+        result["label"] = label.raw_data
 
         return result
 
@@ -102,7 +113,11 @@ def main():
         },
         "repository": {"type": "str", "required": True},
         "name": {"type": "str", "required": True},
-        "color": {"type": "str", "required": True},
+        "color": {
+            "type": "str",
+            "required": False,
+            "default": "cccccc",
+        },
         "description": {"type": "str"},
     }
 
