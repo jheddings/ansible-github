@@ -26,6 +26,8 @@ class RepositoryConfig(GithubObjectConfig):
     private: Optional[bool] = None
     homepage: Optional[str] = None
 
+    auto_init: Optional[bool] = None
+
     has_issues: Optional[bool] = None
     has_wiki: Optional[bool] = None
     has_projects: Optional[bool] = None
@@ -38,9 +40,8 @@ class RepositoryConfig(GithubObjectConfig):
     delete_branch_on_merge: Optional[bool] = None
 
     # TODO support these parameters
-    # - auto_init
-    # - default_branch
-    # - allow_auto_merge
+    #   - default_branch
+    #   - allow_auto_merge
 
 
 class ModuleWrapper:
@@ -93,6 +94,9 @@ class ModuleWrapper:
 
         elif config != repo:
             result["changed"] = True
+
+            # remove create-only parameters
+            new_data.pop("auto_init", None)
 
             if not check_mode:
                 result = repo.edit(**new_data)
@@ -154,6 +158,8 @@ def main():
         "allow_squash_merge": {"type": "bool"},
         "allow_rebase_merge": {"type": "bool"},
         "delete_branch_on_merge": {"type": "bool"},
+        # create only parameters
+        "auto_init": {"type": "bool"},
     }
 
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
