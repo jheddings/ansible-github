@@ -1,6 +1,25 @@
 """Common utilities for github plugins"""
 
+from github import Github
 from github.GithubObject import GithubObject
+
+DEFAULT_API_URL = "https://api.github.com"
+
+
+def ghconnect(token, organization=None, base_url=None):
+    if base_url is None:
+        base_url = DEFAULT_API_URL
+
+    client = Github(base_url=base_url, login_or_token=token)
+
+    return client.get_organization(organization) if organization else client.get_user()
+
+
+class GithubObjectConfig:
+    def __iter__(self):
+        for name, value in self.__dict__.items():
+            if ... != value:
+                yield name, value
 
 
 class GithubObjectMixin:

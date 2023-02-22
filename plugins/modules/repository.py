@@ -1,33 +1,17 @@
 """Configure a Github repository."""
 
-from typing import Union
-
 from ansible.module_utils.basic import AnsibleModule
 
-from github import Github, GithubException
-from github.AuthenticatedUser import AuthenticatedUser
+from github import GithubException
 from github.GithubException import UnknownObjectException
-from github.Organization import Organization
 from github.Repository import Repository
 
-from ..module_utils.mixin import GithubObjectMixin
+from ..module_utils.mixin import GithubObjectMixin, ghconnect
 
 
 class GithubWrapper(GithubObjectMixin):
-    def __init__(self, owner: Union[AuthenticatedUser, Organization]):
-        self.owner = owner
-
-    @classmethod
-    def connect(cls, organization=None, token=None, base_url=None):
-        if not base_url:
-            return None
-
-        client = Github(base_url=base_url, login_or_token=token)
-        owner = (
-            client.get_organization(organization) if organization else client.get_user()
-        )
-
-        return cls(owner=owner)
+    def __init__(self, organization=None, token=None, base_url=None):
+        self.owner = ghconnect(token, base_url, organization)
 
     def get(self, name) -> Repository:
         repo = None
@@ -83,25 +67,22 @@ class GithubWrapper(GithubObjectMixin):
 
 
 def run(params, check_mode=False):
-    token = params.pop("access_token", None)
-    org = params.pop("organization", None)
-    api_url = params.pop("api_url", None)
     state = params.pop("state")
 
-    gh = GithubWrapper.connect(
-        organization=org,
-        token=token,
-        base_url=api_url,
+    mod = GithubWrapper(
+        token=params.pop("access_token", None),
+        organization=params.pop("organization", None),
+        base_url=params.pop("api_url", None),
     )
 
     if state == "absent":
-        result = gh.absent(params["name"], check_mode=check_mode)
+        result = mod.absent(params["name"], check_mode=check_mode)
 
     elif state == "archived":
-        result = gh.archived(params["name"], check_mode=check_mode)
+        result = mod.archived(params["name"], check_mode=check_mode)
 
     elif state == "present":
-        result = gh.present(params, check_mode=check_mode)
+        result = mod.present(params, check_mode=check_mode)
 
     return result
 

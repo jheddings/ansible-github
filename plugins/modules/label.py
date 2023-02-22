@@ -2,30 +2,19 @@
 
 from ansible.module_utils.basic import AnsibleModule
 
-from github import Github, GithubException
+from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
-from github.Repository import Repository
 
-from ..module_utils.mixin import GithubObjectMixin
+from ..module_utils.mixin import GithubObjectMixin, ghconnect
 
 
-class GithubWrapper(GithubObjectMixin):
-    def __init__(self, repo: Repository):
-        self.repo = repo
+class ModuleWrapper(GithubObjectMixin):
+    def __init__(self, repo_name, token=None, organization=None, base_url=None):
+        owner = ghconnect(token, organization=organization, base_url=base_url)
 
-    @classmethod
-    def connect(cls, repo_name, organization=None, token=None, base_url=None):
-        if not base_url:
-            return None
-
-        client = Github(base_url=base_url, login_or_token=token)
-        owner = (
-            client.get_organization(organization) if organization else client.get_user()
-        )
-        repo = owner.get_repo(name=repo_name)
-
-        return cls(repo=repo)
+        # maintain a reference to the repository for label operations
+        self.repo = owner.get_repo(name=repo_name)
 
     def get(self, name) -> Label:
         label = None
@@ -70,24 +59,20 @@ class GithubWrapper(GithubObjectMixin):
 
 
 def run(params, check_mode=False):
-    repo_name = params.pop("repository", None)
-    token = params.pop("access_token", None)
-    org = params.pop("organization", None)
-    api_url = params.pop("api_url", None)
     state = params.pop("state")
 
-    gh = GithubWrapper.connect(
-        repo_name=repo_name,
-        organization=org,
-        token=token,
-        base_url=api_url,
+    mod = ModuleWrapper(
+        token=params.pop("access_token", None),
+        organization=params.pop("organization", None),
+        repo_name=params.pop("repository"),
+        base_url=params.pop("api_url", None),
     )
 
     if state == "absent":
-        result = gh.absent(params, check_mode=check_mode)
+        result = mod.absent(params["name"], check_mode=check_mode)
 
     elif state == "present":
-        result = gh.present(params, check_mode=check_mode)
+        result = mod.present(params, check_mode=check_mode)
 
     return result
 
@@ -97,9 +82,7 @@ def main():
 
     spec = {
         # task parameters
-        "repository": {"type": "str", "required": True},
         "access_token": {"type": "str", "no_log=": True},
-        "organization": {"type": "str", "required": False, "default": None},
         "api_url": {
             "type": "str",
             "required": False,
@@ -112,6 +95,12 @@ def main():
             "choices": ["present", "absent"],
         },
         # label parameters
+        "organization": {
+            "type": "str",
+            "required": False,
+            "default": None,
+        },
+        "repository": {"type": "str", "required": True},
         "name": {"type": "str", "required": True},
         "color": {"type": "str", "required": True},
         "description": {"type": "str"},

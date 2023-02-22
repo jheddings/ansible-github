@@ -102,7 +102,7 @@ def main():
         # file parameters
         "repository": {"type": "str", "required": True},
         "filename": {"type": "str", "required": True},
-        "content": {"type": "str", "required": True},
+        "content": {"type": "str"},
         "branch": {"type": "str"},
         "commit_message": {"type": "str"},
     }
