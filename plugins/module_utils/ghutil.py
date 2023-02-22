@@ -1,7 +1,7 @@
 """Common utilities for github plugins"""
 
 from github import Github
-from github.GithubObject import GithubObject
+from github.GithubObject import GithubObject, NotSet
 
 DEFAULT_API_URL = "https://api.github.com"
 
@@ -35,8 +35,13 @@ class GithubObjectConfig:
 
     def __iter__(self):
         for name, value in self.__dict__.items():
-            if ... != value:
-                yield name, value
+            if value is None:
+                value = NotSet
+
+            elif value == ...:
+                value = NotSet
+
+            yield name, value
 
     def asdict(self):
         return {k: v for k, v in self}

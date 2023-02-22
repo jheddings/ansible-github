@@ -1,6 +1,7 @@
 """Configure a Github repository label."""
 
 from dataclasses import dataclass
+from typing import Optional
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -8,22 +9,22 @@ from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
 
-from ..module_utils.mixin import GithubObjectConfig, ghconnect
+from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
 @dataclass
 class LabelConfig(GithubObjectConfig):
     name: str
-    color: str = ...
-    description: str = ...
+    color: str = "cccccc"
+    description: Optional[str] = None
 
 
 class ModuleWrapper:
-    def __init__(self, repo_name, token=None, organization=None, base_url=None):
-        owner = ghconnect(token, organization=organization, base_url=base_url)
+    def __init__(self, repo, token=None, org=None, base_url=None):
+        owner = ghconnect(token, organization=org, base_url=base_url)
 
         # maintain a reference to the repository for label operations
-        self.repo = owner.get_repo(name=repo_name)
+        self.repo = owner.get_repo(name=repo)
 
     def get(self, name) -> Label:
         label = None
@@ -74,16 +75,18 @@ def run(params, check_mode=False):
 
     mod = ModuleWrapper(
         token=params.pop("access_token", None),
-        organization=params.pop("organization", None),
-        repo_name=params.pop("repository"),
+        org=params.pop("organization", None),
+        repo=params.pop("repository"),
         base_url=params.pop("api_url", None),
     )
 
+    lbl = LabelConfig(**params)
+
     if state == "absent":
-        result = mod.absent(params["name"], check_mode=check_mode)
+        result = mod.absent(lbl.name, check_mode=check_mode)
 
     elif state == "present":
-        result = mod.present(params, check_mode=check_mode)
+        result = mod.present(lbl, check_mode=check_mode)
 
     return result
 
@@ -94,28 +97,21 @@ def main():
     spec = {
         # task parameters
         "access_token": {"type": "str", "no_log=": True},
+        "organization": {"type": "str"},
+        "repository": {"type": "str", "required": True},
         "api_url": {
             "type": "str",
-            "required": False,
             "default": "https://api.github.com",
         },
         "state": {
             "type": "str",
-            "required": False,
             "default": "present",
             "choices": ["present", "absent"],
         },
         # label parameters
-        "organization": {
-            "type": "str",
-            "required": False,
-            "default": None,
-        },
-        "repository": {"type": "str", "required": True},
         "name": {"type": "str", "required": True},
         "color": {
             "type": "str",
-            "required": False,
             "default": "cccccc",
         },
         "description": {"type": "str"},

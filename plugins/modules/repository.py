@@ -1,17 +1,51 @@
 """Configure a Github repository."""
 
+from dataclasses import dataclass
+from typing import Optional
+
 from ansible.module_utils.basic import AnsibleModule
 
 from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Repository import Repository
 
-from ..module_utils.mixin import GithubObjectMixin, ghconnect
+from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-class GithubWrapper(GithubObjectMixin):
-    def __init__(self, organization=None, token=None, base_url=None):
-        self.owner = ghconnect(token, base_url, organization)
+@dataclass
+class RepositoryConfig(GithubObjectConfig):
+    """Configuration for github.Repository objects."""
+
+    # the options here must be:
+    #   a) supported by the API
+    #   b) implemented by PyGithub
+    #   c) handled correctly for create vs edit
+
+    name: str
+    description: Optional[str] = None
+    private: Optional[bool] = None
+    homepage: Optional[str] = None
+
+    has_issues: Optional[bool] = None
+    has_wiki: Optional[bool] = None
+    has_projects: Optional[bool] = None
+    has_downloads: Optional[bool] = None
+
+    allow_merge_commit: Optional[bool] = None
+    allow_squash_merge: Optional[bool] = None
+    allow_rebase_merge: Optional[bool] = None
+
+    delete_branch_on_merge: Optional[bool] = None
+
+    # TODO support these parameters
+    # - auto_init
+    # - default_branch
+    # - allow_auto_merge
+
+
+class ModuleWrapper:
+    def __init__(self, token=None, org=None, base_url=None):
+        self.owner = ghconnect(token, organization=org, base_url=base_url)
 
     def get(self, name) -> Repository:
         repo = None
@@ -45,23 +79,25 @@ class GithubWrapper(GithubObjectMixin):
 
         return {"changed": True}
 
-    def present(self, config, check_mode=False):
+    def present(self, config: RepositoryConfig, check_mode=False):
         result = {"changed": False, "repo": None}
 
-        repo = self.get(name=config["name"])
+        repo = self.get(name=config.name)
+        new_data = config.asdict()
 
         if repo is None:
-            if check_mode:
-                result["repo"] = config
-
-            else:
-                repo = self.owner.create_repo(**config)
-                result["repo"] = repo.raw_data
-
             result["changed"] = True
 
-        else:
-            result = self.edit(repo, config, check_mode=check_mode)
+            if not check_mode:
+                repo = self.owner.create_repo(**new_data)
+
+        elif config != repo:
+            result["changed"] = True
+
+            if not check_mode:
+                result = repo.edit(**new_data)
+
+        result["repo"] = repo.raw_data
 
         return result
 
@@ -69,20 +105,22 @@ class GithubWrapper(GithubObjectMixin):
 def run(params, check_mode=False):
     state = params.pop("state")
 
-    mod = GithubWrapper(
+    mod = ModuleWrapper(
         token=params.pop("access_token", None),
-        organization=params.pop("organization", None),
+        org=params.pop("organization", None),
         base_url=params.pop("api_url", None),
     )
 
+    lbl = RepositoryConfig(**params)
+
     if state == "absent":
-        result = mod.absent(params["name"], check_mode=check_mode)
+        result = mod.absent(lbl.name, check_mode=check_mode)
 
     elif state == "archived":
-        result = mod.archived(params["name"], check_mode=check_mode)
+        result = mod.archived(lbl.name, check_mode=check_mode)
 
     elif state == "present":
-        result = mod.present(params, check_mode=check_mode)
+        result = mod.present(lbl, check_mode=check_mode)
 
     return result
 
@@ -93,20 +131,18 @@ def main():
     spec = {
         # task parameters
         "access_token": {"type": "str", "no_log=": True},
-        "organization": {"type": "str", "required": False, "default": None},
-        "name": {"type": "str", "required": True},
+        "organization": {"type": "str"},
         "api_url": {
             "type": "str",
-            "required": False,
             "default": "https://api.github.com",
         },
         "state": {
             "type": "str",
-            "required": False,
             "default": "present",
             "choices": ["present", "absent", "archived"],
         },
         # repo parameters
+        "name": {"type": "str", "required": True},
         "description": {"type": "str"},
         "homepage": {"type": "str"},
         "private": {"type": "bool"},
@@ -126,7 +162,7 @@ def main():
         result = run(module.params, module.check_mode)
         module.exit_json(**result)
     except GithubException as err:
-        module.fail_json(msg=f"Github Error: {err}")
+        module.fail_json(msg=f"Github Error [{err.status}]: {err.data}")
 
 
 if __name__ == "__main__":
