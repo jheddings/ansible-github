@@ -1,5 +1,5 @@
 ---
-name: Static File Checks
+name: Preflight Checks
 
 "on":
   push:
