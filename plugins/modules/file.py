@@ -1,82 +1,115 @@
-"""Configure a Github repository."""
+"""Manage a Github repository file."""
+
+from dataclasses import dataclass
+from typing import Any, Optional
 
 from ansible.module_utils.basic import AnsibleModule
 
-from github import Github, GithubException
+from github import GithubException
 from github.ContentFile import ContentFile
 from github.GithubException import UnknownObjectException
 from github.GithubObject import NotSet
-from github.Repository import Repository
+
+from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-class GithubWrapper:
-    def __init__(self, repo: Repository):
-        self.repo = repo
+@dataclass
+class FileConfig(GithubObjectConfig):
+    path: str
+    message: str
 
-    @classmethod
-    def connect(cls, repo_name, organization=None, token=None, base_url=None):
-        if not base_url:
-            return None
+    content: Optional[Any] = None
 
-        client = Github(base_url=base_url, login_or_token=token)
-        owner = (
-            client.get_organization(organization) if organization else client.get_user()
-        )
-        repo = owner.get_repo(name=repo_name)
 
-        return cls(repo=repo)
+class ModuleWrapper:
+    def __init__(self, repo, branch=None, token=None, org=None, base_url=None):
+        owner = ghconnect(token, organization=org, base_url=base_url)
 
-    def get(self, name, ref=NotSet) -> ContentFile:
-        contents = None
+        # maintain a reference to the repository for file operations
+        self.repo = owner.get_repo(name=repo)
+
+        self.ref = NotSet if branch is None else branch
+
+    def get(self, path) -> ContentFile:
+        file = None
 
         try:
-            contents = self.repo.get_contents(name, ref=ref)
+            file = self.repo.get_contents(path=path, ref=self.ref)
         except UnknownObjectException:
             return None
 
-        return contents
+        # TODO make sure we have a single file type
 
-    def absent(self, filename, branch=NotSet, check_mode=False):
-        file = self.get(name=filename)
+        return file
+
+    def absent(self, config: FileConfig, check_mode=False):
+        file = self.get(path=config.path)
 
         if file is None:
-            return {"changed": False, "file": filename}
+            return {"changed": False, "message": None}
 
         if not check_mode:
-            self.repo.delete_file(file.path, "remove test", file.sha, branch=branch)
+            self.repo.delete_file(file.path, config.message, file.sha, branch=self.ref)
 
-        return {"changed": True, "file": file.path}
+        return {"changed": True, "message": config.message}
 
-    def present(self, config, check_mode=False):
+    def present(self, config: FileConfig, check_mode=False):
         result = {"changed": False, "file": None}
+
+        file = self.get(path=config.path)
+        new_data = config.asdict()
+
+        if file is None:
+            result["changed"] = True
+
+            if not check_mode:
+                res = self.repo.create_file(**new_data)
+                file = res["content"]
+
+        result["file"] = file.raw_data
+
+        return result
+
+    def replace(self, config: FileConfig, check_mode=False):
+        result = self.present(config, check_mode=check_mode)
+
+        if result["changed"]:
+            return result
 
         return result
 
 
 def run(params, check_mode=False):
-    token = params.pop("access_token", None)
-    org = params.pop("organization", None)
-    api_url = params.pop("api_url", None)
     state = params.pop("state")
-    repo = params.pop("repository")
 
-    gh = GithubWrapper.connect(
-        organization=org,
-        token=token,
-        repo_name=repo,
-        base_url=api_url,
+    mod = ModuleWrapper(
+        token=params.pop("access_token", None),
+        org=params.pop("organization", None),
+        repo=params.pop("repository"),
+        branch=params.pop("branch", None),
+        base_url=params.pop("api_url", None),
     )
 
-    filename = params.pop("branch")
-    branch = params.pop("branch", None)
+    # if the caller provided source, load into content instead
+
+    src = params.pop("source", None)
+
+    if src is not None:
+        with open(src, "rb") as fp:
+            params["content"] = fp.read()
+
+    cfg = FileConfig(**params)
+
+    # configure the desired state
 
     if state == "absent":
-        result = gh.absent(filename, branch, check_mode=check_mode)
+        result = mod.absent(cfg, check_mode=check_mode)
 
     elif state == "present":
-        result = gh.present(
-            filename, branch, content=params["content"], check_mode=check_mode
-        )
+        result = mod.present(cfg, check_mode=check_mode)
+
+    elif state == "replace":
+        result = mod.replace(cfg, check_mode=check_mode)
 
     return result
 
@@ -87,27 +120,35 @@ def main():
     spec = {
         # task parameters
         "access_token": {"type": "str", "no_log=": True},
-        "organization": {"type": "str", "required": False, "default": None},
+        "organization": {"type": "str"},
+        "repository": {"type": "str", "required": True},
+        "branch": {"type": "str"},
         "api_url": {
             "type": "str",
-            "required": False,
             "default": "https://api.github.com",
         },
         "state": {
             "type": "str",
-            "required": False,
             "default": "present",
             "choices": ["present", "absent"],
         },
         # file parameters
-        "repository": {"type": "str", "required": True},
-        "filename": {"type": "str", "required": True},
-        "content": {"type": "str"},
-        "branch": {"type": "str"},
-        "commit_message": {"type": "str"},
+        "path": {"type": "str", "required": True},
+        "message": {"type": "str", "required": True},
+        "content": {"type": "raw"},
+        "source": {"type": "str"},
     }
 
-    module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec=spec,
+        supports_check_mode=True,
+        mutually_exclusive=[
+            ("content", "source"),
+        ],
+        required_if=[
+            ("state", "present", ("source", "content"), True),
+        ],
+    )
 
     try:
         result = run(module.params, module.check_mode)
