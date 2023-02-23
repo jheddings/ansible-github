@@ -1,5 +1,7 @@
 """Manage a Github repository file."""
 
+# https://pygithub.readthedocs.io/en/latest/examples/Repository.html#get-a-specific-content-file
+
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -19,6 +21,17 @@ class FileConfig(GithubObjectConfig):
     message: str
 
     content: Optional[Any] = None
+
+    def __eq__(self, other):
+        if isinstance(other, ContentFile):
+            return all(
+                [
+                    self.path == other.path,
+                    self.content == other.decoded_content,
+                ]
+            )
+
+        return super().__eq__(other)
 
 
 class ModuleWrapper:
@@ -53,28 +66,37 @@ class ModuleWrapper:
 
         return {"changed": True, "message": config.message}
 
-    def present(self, config: FileConfig, check_mode=False):
+    def present(self, config: FileConfig, update=False, check_mode=False):
         result = {"changed": False, "file": None}
 
         file = self.get(path=config.path)
-        new_data = config.asdict()
 
         if file is None:
             result["changed"] = True
 
             if not check_mode:
-                res = self.repo.create_file(**new_data)
-                file = res["content"]
+                created = self.repo.create_file(
+                    config.path,
+                    config.message,
+                    config.content,
+                    branch=self.ref,
+                )
+                file = created["content"]
+
+        elif update and (config != file):
+            result["changed"] = True
+
+            if not check_mode:
+                updated = self.repo.update_file(
+                    config.path,
+                    config.message,
+                    config.content,
+                    file.sha,
+                    branch=self.ref,
+                )
+                file = updated["content"]
 
         result["file"] = file.raw_data
-
-        return result
-
-    def replace(self, config: FileConfig, check_mode=False):
-        result = self.present(config, check_mode=check_mode)
-
-        if result["changed"]:
-            return result
 
         return result
 
@@ -109,7 +131,7 @@ def run(params, check_mode=False):
         result = mod.present(cfg, check_mode=check_mode)
 
     elif state == "replace":
-        result = mod.replace(cfg, check_mode=check_mode)
+        result = mod.present(cfg, update=True, check_mode=check_mode)
 
     return result
 
@@ -130,7 +152,7 @@ def main():
         "state": {
             "type": "str",
             "default": "present",
-            "choices": ["present", "absent"],
+            "choices": ["present", "replace", "absent"],
         },
         # file parameters
         "path": {"type": "str", "required": True},
