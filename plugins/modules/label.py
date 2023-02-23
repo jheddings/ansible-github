@@ -1,31 +1,30 @@
 """Configure a Github repository label."""
 
+from dataclasses import dataclass
+from typing import Optional
+
 from ansible.module_utils.basic import AnsibleModule
 
-from github import Github, GithubException
+from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
-from github.Repository import Repository
 
-from ..module_utils.mixin import GithubObjectMixin
+from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-class GithubWrapper(GithubObjectMixin):
-    def __init__(self, repo: Repository):
-        self.repo = repo
+@dataclass
+class LabelConfig(GithubObjectConfig):
+    name: str
+    color: str = "cccccc"
+    description: Optional[str] = None
 
-    @classmethod
-    def connect(cls, repo_name, organization=None, token=None, base_url=None):
-        if not base_url:
-            return None
 
-        client = Github(base_url=base_url, login_or_token=token)
-        owner = (
-            client.get_organization(organization) if organization else client.get_user()
-        )
-        repo = owner.get_repo(name=repo_name)
+class ModuleWrapper:
+    def __init__(self, repo, token=None, org=None, base_url=None):
+        owner = ghconnect(token, organization=org, base_url=base_url)
 
-        return cls(repo=repo)
+        # maintain a reference to the repository for label operations
+        self.repo = owner.get_repo(name=repo)
 
     def get(self, name) -> Label:
         label = None
@@ -48,46 +47,46 @@ class GithubWrapper(GithubObjectMixin):
 
         return {"changed": True}
 
-    def present(self, config, check_mode=False):
+    def present(self, config: LabelConfig, check_mode=False):
         result = {"changed": False, "label": None}
 
-        label = self.get(name=config["name"])
+        label = self.get(name=config.name)
+        new_data = config.asdict()
 
         if label is None:
-            if check_mode:
-                result["label"] = config
-
-            else:
-                label = self.repo.create_label(**config)
-                result["label"] = label.raw_data
-
             result["changed"] = True
 
-        else:
-            result = self.edit(label, config, check_mode=check_mode)
+            if not check_mode:
+                label = self.repo.create_label(**new_data)
+
+        elif config != label:
+            result["changed"] = True
+
+            if not check_mode:
+                result = label.edit(**new_data)
+
+        result["label"] = label.raw_data
 
         return result
 
 
 def run(params, check_mode=False):
-    repo_name = params.pop("repository", None)
-    token = params.pop("access_token", None)
-    org = params.pop("organization", None)
-    api_url = params.pop("api_url", None)
     state = params.pop("state")
 
-    gh = GithubWrapper.connect(
-        repo_name=repo_name,
-        organization=org,
-        token=token,
-        base_url=api_url,
+    mod = ModuleWrapper(
+        token=params.pop("access_token", None),
+        org=params.pop("organization", None),
+        repo=params.pop("repository"),
+        base_url=params.pop("api_url", None),
     )
 
+    cfg = LabelConfig(**params)
+
     if state == "absent":
-        result = gh.absent(params, check_mode=check_mode)
+        result = mod.absent(cfg.name, check_mode=check_mode)
 
     elif state == "present":
-        result = gh.present(params, check_mode=check_mode)
+        result = mod.present(cfg, check_mode=check_mode)
 
     return result
 
@@ -97,23 +96,24 @@ def main():
 
     spec = {
         # task parameters
-        "repository": {"type": "str", "required": True},
         "access_token": {"type": "str", "no_log=": True},
-        "organization": {"type": "str", "required": False, "default": None},
+        "organization": {"type": "str"},
+        "repository": {"type": "str", "required": True},
         "api_url": {
             "type": "str",
-            "required": False,
             "default": "https://api.github.com",
         },
         "state": {
             "type": "str",
-            "required": False,
             "default": "present",
             "choices": ["present", "absent"],
         },
         # label parameters
         "name": {"type": "str", "required": True},
-        "color": {"type": "str", "required": True},
+        "color": {
+            "type": "str",
+            "default": "cccccc",
+        },
         "description": {"type": "str"},
     }
 
