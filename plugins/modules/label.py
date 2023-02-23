@@ -80,13 +80,13 @@ def run(params, check_mode=False):
         base_url=params.pop("api_url", None),
     )
 
-    lbl = LabelConfig(**params)
+    cfg = LabelConfig(**params)
 
     if state == "absent":
-        result = mod.absent(lbl.name, check_mode=check_mode)
+        result = mod.absent(cfg.name, check_mode=check_mode)
 
     elif state == "present":
-        result = mod.present(lbl, check_mode=check_mode)
+        result = mod.present(cfg, check_mode=check_mode)
 
     return result
 
