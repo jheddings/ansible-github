@@ -14,7 +14,7 @@ from github.GithubObject import NotSet
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-@dataclass
+@dataclass(eq=False)
 class FileConfig(GithubObjectConfig):
     path: str
     message: str
@@ -140,7 +140,7 @@ def main():
 
     spec = {
         # task parameters
-        "access_token": {"type": "str", "no_log=": True},
+        "access_token": {"type": "str", "no_log": True},
         "organization": {"type": "str"},
         "repository": {"type": "str", "required": True},
         "branch": {"type": "str"},

@@ -11,7 +11,7 @@ from github.Repository import Repository
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-@dataclass
+@dataclass(eq=False)
 class RepositoryConfig(GithubObjectConfig):
     """Configuration for github.Repository objects."""
 
@@ -85,8 +85,6 @@ class ModuleWrapper:
         repo = self.get(name=config.name)
         new_data = config.asdict()
 
-        print(new_data)
-
         if repo is None:
             result["changed"] = True
 
@@ -100,7 +98,7 @@ class ModuleWrapper:
             new_data.pop("auto_init", None)
 
             if not check_mode:
-                result = repo.edit(**new_data)
+                repo.edit(**new_data)
 
         result["repo"] = repo.raw_data
 
@@ -138,7 +136,7 @@ def main():
 
     spec = {
         # task parameters
-        "access_token": {"type": "str", "no_log=": True},
+        "access_token": {"type": "str", "no_log": True},
         "organization": {"type": "str"},
         "api_url": {
             "type": "str",
