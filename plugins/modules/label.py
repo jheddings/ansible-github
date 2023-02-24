@@ -11,7 +11,7 @@ from github.Label import Label
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-@dataclass
+@dataclass(eq=False)
 class LabelConfig(GithubObjectConfig):
     name: str
     color: str = "cccccc"
@@ -62,7 +62,7 @@ class ModuleWrapper:
             result["changed"] = True
 
             if not check_mode:
-                result = label.edit(**new_data)
+                label.edit(**new_data)
 
         result["label"] = label.raw_data
 
@@ -95,7 +95,7 @@ def main():
 
     spec = {
         # task parameters
-        "access_token": {"type": "str", "no_log=": True},
+        "access_token": {"type": "str", "no_log": True},
         "organization": {"type": "str"},
         "repository": {"type": "str", "required": True},
         "api_url": {

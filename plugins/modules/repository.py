@@ -11,7 +11,7 @@ from github.Repository import Repository
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 
 
-@dataclass
+@dataclass(eq=False)
 class RepositoryConfig(GithubObjectConfig):
     """Configuration for github.Repository objects."""
 
@@ -79,7 +79,7 @@ class ModuleWrapper:
 
         return {"changed": True}
 
-    def present(self, config: RepositoryConfig, check_mode=False):
+    def present(self, config: RepositoryConfig, replace=False, check_mode=False):
         result = {"changed": False, "repo": None}
 
         repo = self.get(name=config.name)
@@ -91,14 +91,14 @@ class ModuleWrapper:
             if not check_mode:
                 repo = self.owner.create_repo(**new_data)
 
-        elif config != repo:
+        elif replace and (config != repo):
             result["changed"] = True
 
             # remove create-only parameters
             new_data.pop("auto_init", None)
 
             if not check_mode:
-                result = repo.edit(**new_data)
+                repo.edit(**new_data)
 
         result["repo"] = repo.raw_data
 
@@ -125,6 +125,9 @@ def run(params, check_mode=False):
     elif state == "present":
         result = mod.present(cfg, check_mode=check_mode)
 
+    elif state == "replace":
+        result = mod.present(cfg, replace=True, check_mode=check_mode)
+
     return result
 
 
@@ -133,7 +136,7 @@ def main():
 
     spec = {
         # task parameters
-        "access_token": {"type": "str", "no_log=": True},
+        "access_token": {"type": "str", "no_log": True},
         "organization": {"type": "str"},
         "api_url": {
             "type": "str",
@@ -142,7 +145,7 @@ def main():
         "state": {
             "type": "str",
             "default": "present",
-            "choices": ["present", "absent", "archived"],
+            "choices": ["present", "replace", "absent", "archived"],
         },
         # repo parameters
         "name": {"type": "str", "required": True},
