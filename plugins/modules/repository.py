@@ -3,12 +3,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from ansible.module_utils.basic import AnsibleModule
-from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Repository import Repository
 
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
+from ..module_utils.runner import TaskRunner
 
 
 @dataclass(eq=False)
@@ -43,11 +42,17 @@ class RepositoryConfig(GithubObjectConfig):
     #   - allow_auto_merge
 
 
-class ModuleWrapper:
+class RepositoryManager:
+    """Manage state of a Github repository."""
+
     def __init__(self, token=None, org=None, base_url=None):
         self.owner = ghconnect(token, organization=org, base_url=base_url)
 
     def get(self, name) -> Repository:
+        """Get the named repository.
+
+        If the repository does not exist, this method returns `None`.
+        """
         repo = None
 
         try:
@@ -58,6 +63,7 @@ class ModuleWrapper:
         return repo
 
     def absent(self, name, check_mode=False):
+        """Delete the named repository."""
         repo = self.get(name=name)
 
         if repo is None:
@@ -69,6 +75,7 @@ class ModuleWrapper:
         return {"changed": True}
 
     def archived(self, name, check_mode=False):
+        """Archive the named repository."""
         repo = self.owner.get_repo(name=name)
 
         if not repo.archived():
@@ -79,98 +86,123 @@ class ModuleWrapper:
 
         return {"changed": True}
 
-    def present(self, config: RepositoryConfig, replace=False, check_mode=False):
+    def present(self, config: RepositoryConfig, check_mode=False):
+        """Ensure that the configured repository exists.
+
+        If the repository does not exist, it will be created with the provided
+        configuration.  If the repository exists, it will not be modified.
+        """
         result = {"changed": False, "repo": None}
 
         repo = self.get(name=config.name)
         new_data = config.asdict()
 
         if repo is None:
-            result["changed"] = True
-
             if not check_mode:
                 repo = self.owner.create_repo(**new_data)
 
-        elif replace and (config != repo):
             result["changed"] = True
 
+        result["repo"] = repo.raw_data
+
+        return result
+
+    def replace(self, config: RepositoryConfig, check_mode=False):
+        """Replace the configuration of an existing repository.
+
+        If the repository does not exist, it will be created.
+        """
+        result = {"changed": False, "repo": None}
+
+        repo = self.get(name=config.name)
+        new_data = config.asdict()
+
+        if repo is None:
+            if not check_mode:
+                repo = self.owner.create_repo(**new_data)
+
+            result["changed"] = True
+
+        if config != repo:
             # remove create-only parameters
             new_data.pop("auto_init", None)
 
             if not check_mode:
                 repo.edit(**new_data)
 
+            result["changed"] = True
+
         result["repo"] = repo.raw_data
 
         return result
 
 
-def run(params, check_mode=False):
-    state = params.pop("state")
+class RepositoryRunner(TaskRunner):
+    """Runner for the jheddings.github.repository task."""
 
-    mod = ModuleWrapper(
-        token=params.pop("access_token", None),
-        org=params.pop("organization", None),
-        base_url=params.pop("api_url", None),
-    )
+    def apply(self, state, params, check_mode=False):
+        mgr = RepositoryManager(
+            token=params.pop("access_token", None),
+            org=params.pop("organization", None),
+            base_url=params.pop("api_url", None),
+        )
 
-    cfg = RepositoryConfig(**params)
+        cfg = RepositoryConfig(**params)
 
-    if state == "absent":
-        result = mod.absent(cfg.name, check_mode=check_mode)
+        if state == "absent":
+            result = mgr.absent(cfg.name, check_mode=check_mode)
 
-    elif state == "archived":
-        result = mod.archived(cfg.name, check_mode=check_mode)
+        elif state == "archived":
+            result = mgr.archived(cfg.name, check_mode=check_mode)
 
-    elif state == "present":
-        result = mod.present(cfg, check_mode=check_mode)
+        elif state == "replace":
+            result = mgr.replace(cfg, check_mode=check_mode)
 
-    elif state == "replace":
-        result = mod.present(cfg, replace=True, check_mode=check_mode)
+        elif state == "present":
+            result = mgr.present(cfg, check_mode=check_mode)
 
-    return result
+        return result
 
 
 def main():
     """Main module entry point."""
 
-    spec = {
+    runner = RepositoryRunner(
         # task parameters
-        "access_token": {"type": "str", "no_log": True},
-        "organization": {"type": "str"},
-        "api_url": {
+        access_token={"type": "str", "no_log": True},
+        organization={"type": "str"},
+        api_url={
             "type": "str",
             "default": "https://api.github.com",
         },
-        "state": {
+        state={
             "type": "str",
             "default": "present",
-            "choices": ["present", "replace", "absent", "archived"],
+            "choices": [
+                "present",
+                "replace",
+                "absent",
+                "archived",
+            ],
         },
         # repo parameters
-        "name": {"type": "str", "required": True},
-        "description": {"type": "str"},
-        "homepage": {"type": "str"},
-        "private": {"type": "bool"},
-        "has_issues": {"type": "bool"},
-        "has_downloads": {"type": "bool"},
-        "has_wiki": {"type": "bool"},
-        "has_projects": {"type": "bool"},
-        "allow_merge_commit": {"type": "bool"},
-        "allow_squash_merge": {"type": "bool"},
-        "allow_rebase_merge": {"type": "bool"},
-        "delete_branch_on_merge": {"type": "bool"},
-        # create only parameters
-        "auto_init": {"type": "bool"},
-    }
+        name={"type": "str", "required": True},
+        description={"type": "str"},
+        homepage={"type": "str"},
+        private={"type": "bool"},
+        has_issues={"type": "bool"},
+        has_downloads={"type": "bool"},
+        has_wiki={"type": "bool"},
+        has_projects={"type": "bool"},
+        allow_merge_commit={"type": "bool"},
+        allow_squash_merge={"type": "bool"},
+        allow_rebase_merge={"type": "bool"},
+        delete_branch_on_merge={"type": "bool"},
+        # create parameters
+        auto_init={"type": "bool"},
+    )
 
-    module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
-
-    try:
-        result = run(module.params, module.check_mode)
-        module.exit_json(**result)
-    except GithubException as err:
-        module.fail_json(msg=f"Github Error [{err.status}]: {err.data}")
+    runner()
 
 
 if __name__ == "__main__":

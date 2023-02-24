@@ -5,13 +5,12 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from ansible.module_utils.basic import AnsibleModule
-from github import GithubException
 from github.ContentFile import ContentFile
 from github.GithubException import UnknownObjectException
 from github.GithubObject import NotSet
 
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
+from ..module_utils.runner import TaskRunner
 
 
 @dataclass(eq=False)
@@ -20,8 +19,14 @@ class FileConfig(GithubObjectConfig):
     message: str
 
     content: Optional[Any] = None
+    source: Optional[str] = None
 
     def __eq__(self, other):
+        """Compare the current configuration to another object.
+
+        If the other object is a `ContentFile`, this method uses the file path and
+        raw contents to determine equality
+        """
         if isinstance(other, ContentFile):
             return all(
                 [
@@ -32,17 +37,30 @@ class FileConfig(GithubObjectConfig):
 
         return super().__eq__(other)
 
+    def __post_init__(self):
+        """Verify configuration options."""
 
-class ModuleWrapper:
+        # if the caller provided source, load into content instead
+        if self.source is not None:
+            with open(self.source, "rb") as fp:
+                self.content = fp.read()
+
+            self.source = ...
+
+
+class FileManager:
+    """Manage files in a Github repository."""
+
     def __init__(self, repo, branch=None, token=None, org=None, base_url=None):
         owner = ghconnect(token, organization=org, base_url=base_url)
-
-        # maintain a reference to the repository for file operations
         self.repo = owner.get_repo(name=repo)
-
         self.ref = NotSet if branch is None else branch
 
     def get(self, path) -> ContentFile:
+        """Get the requested file from this manager.
+
+        If the file does not exist, this method returns `None`.
+        """
         file = None
 
         try:
@@ -55,6 +73,7 @@ class ModuleWrapper:
         return file
 
     def absent(self, config: FileConfig, check_mode=False):
+        """Delete the file using the configuration provided."""
         file = self.get(path=config.path)
 
         if file is None:
@@ -66,6 +85,12 @@ class ModuleWrapper:
         return {"changed": True, "message": config.message}
 
     def present(self, config: FileConfig, update=False, check_mode=False):
+        """Ensure that the configured file exists.
+
+        If the file does not exist, it will be created based on the provided
+        configuration.  If the file exists, it will be modified to match the
+        given configuration if requested.
+        """
         result = {"changed": False, "file": None}
 
         file = self.get(path=config.path)
@@ -99,83 +124,73 @@ class ModuleWrapper:
 
         return result
 
+    def replace(self, config: FileConfig, check_mode=False):
+        """Replace the configuration of an existing file.
 
-def run(params, check_mode=False):
-    state = params.pop("state")
+        If the file does not exist, it will be created.
+        """
+        return self.present(config, update=True, check_mode=check_mode)
 
-    mod = ModuleWrapper(
-        token=params.pop("access_token", None),
-        org=params.pop("organization", None),
-        repo=params.pop("repository"),
-        branch=params.pop("branch", None),
-        base_url=params.pop("api_url", None),
-    )
 
-    # if the caller provided source, load into content instead
+class FileRunner(TaskRunner):
+    """Runner for the jheddings.github.label task."""
 
-    src = params.pop("source", None)
+    def apply(self, state, params, check_mode=False):
+        mgr = FileManager(
+            token=params.pop("access_token", None),
+            org=params.pop("organization", None),
+            repo=params.pop("repository"),
+            branch=params.pop("branch", None),
+            base_url=params.pop("api_url", None),
+        )
 
-    if src is not None:
-        with open(src, "rb") as fp:
-            params["content"] = fp.read()
+        cfg = FileConfig(**params)
 
-    cfg = FileConfig(**params)
+        if state == "absent":
+            result = mgr.absent(cfg, check_mode=check_mode)
 
-    # configure the desired state
+        elif state == "present":
+            result = mgr.present(cfg, check_mode=check_mode)
 
-    if state == "absent":
-        result = mod.absent(cfg, check_mode=check_mode)
+        elif state == "replace":
+            result = mgr.replace(cfg, check_mode=check_mode)
 
-    elif state == "present":
-        result = mod.present(cfg, check_mode=check_mode)
-
-    elif state == "replace":
-        result = mod.present(cfg, update=True, check_mode=check_mode)
-
-    return result
+        return result
 
 
 def main():
     """Main module entry point."""
 
-    spec = {
+    runner = FileRunner(
         # task parameters
-        "access_token": {"type": "str", "no_log": True},
-        "organization": {"type": "str"},
-        "repository": {"type": "str", "required": True},
-        "branch": {"type": "str"},
-        "api_url": {
+        access_token={"type": "str", "no_log": True},
+        organization={"type": "str"},
+        repository={"type": "str", "required": True},
+        branch={"type": "str"},
+        api_url={
             "type": "str",
             "default": "https://api.github.com",
         },
-        "state": {
+        state={
             "type": "str",
             "default": "present",
             "choices": ["present", "replace", "absent"],
         },
         # file parameters
-        "path": {"type": "str", "required": True},
-        "message": {"type": "str", "required": True},
-        "content": {"type": "raw"},
-        "source": {"type": "str"},
-    }
-
-    module = AnsibleModule(
-        argument_spec=spec,
-        supports_check_mode=True,
-        mutually_exclusive=[
-            ("content", "source"),
-        ],
-        required_if=[
-            ("state", "present", ("source", "content"), True),
-        ],
+        path={"type": "str", "required": True},
+        message={"type": "str", "required": True},
+        content={"type": "raw"},
+        source={"type": "str"},
     )
 
-    try:
-        result = run(module.params, module.check_mode)
-        module.exit_json(**result)
-    except GithubException as err:
-        module.fail_json(msg=f"Github Error: {err}")
+    #    mutually_exclusive=[
+    #        ("content", "source"),
+    #    ],
+    #    required_if=[
+    #        ("state", "present", ("source", "content"), True),
+    #    ],
+
+    runner()
 
 
 if __name__ == "__main__":
