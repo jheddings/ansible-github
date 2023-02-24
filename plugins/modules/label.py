@@ -118,7 +118,10 @@ def main():
         state={
             "type": "str",
             "default": "present",
-            "choices": ["present", "absent"],
+            "choices": [
+                "present",
+                "absent",
+            ],
         },
         # label parameters
         name={"type": "str", "required": True},
