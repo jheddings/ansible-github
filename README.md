@@ -2,10 +2,14 @@
 
 Utilities for working with Github.
 
-## jheddings.github.repository ##
+## jheddings.github.file ##
 
-Configure repositories.
+Manage files in a Github repository.
 
 ## jheddings.github.label ##
 
-Manage labels for a repository.
+Manage labels for a Github repository.
+
+## jheddings.github.repository ##
+
+Manage Github repositories.
