@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from ansible.module_utils.basic import AnsibleModule
-
 from github import GithubException
 from github.ContentFile import ContentFile
 from github.GithubException import UnknownObjectException

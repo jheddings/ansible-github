@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ansible.module_utils.basic import AnsibleModule
-
 from github import GithubException
 from github.GithubException import UnknownObjectException
 from github.Label import Label
