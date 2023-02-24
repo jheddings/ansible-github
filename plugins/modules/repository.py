@@ -79,11 +79,13 @@ class ModuleWrapper:
 
         return {"changed": True}
 
-    def present(self, config: RepositoryConfig, check_mode=False):
+    def present(self, config: RepositoryConfig, replace=False, check_mode=False):
         result = {"changed": False, "repo": None}
 
         repo = self.get(name=config.name)
         new_data = config.asdict()
+
+        print(new_data)
 
         if repo is None:
             result["changed"] = True
@@ -91,7 +93,7 @@ class ModuleWrapper:
             if not check_mode:
                 repo = self.owner.create_repo(**new_data)
 
-        elif config != repo:
+        elif replace and (config != repo):
             result["changed"] = True
 
             # remove create-only parameters
@@ -125,6 +127,9 @@ def run(params, check_mode=False):
     elif state == "present":
         result = mod.present(cfg, check_mode=check_mode)
 
+    elif state == "replace":
+        result = mod.present(cfg, replace=True, check_mode=check_mode)
+
     return result
 
 
@@ -142,7 +147,7 @@ def main():
         "state": {
             "type": "str",
             "default": "present",
-            "choices": ["present", "absent", "archived"],
+            "choices": ["present", "replace", "absent", "archived"],
         },
         # repo parameters
         "name": {"type": "str", "required": True},

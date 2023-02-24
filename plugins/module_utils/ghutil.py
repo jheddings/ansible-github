@@ -24,7 +24,7 @@ class GithubObjectConfig:
             return self.__eq__(other.raw_data)
 
         if isinstance(other, dict):
-            for key, val in other.items():
+            for key, val in self:
                 if self[key] != val:
                     return False
 
