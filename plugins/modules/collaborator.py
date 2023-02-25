@@ -33,7 +33,7 @@ class CollaboratorManager:
 
     def present(self, config: CollaboratorConfig, check_mode=False):
         """Ensure that the collaaborator exists with the specified permissions."""
-        result = {"changed": False, "username": None, "permission": None}
+        result = {"changed": False, "username": config.username, "permission": None}
 
         perm = None
 
