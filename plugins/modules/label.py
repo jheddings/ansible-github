@@ -88,7 +88,7 @@ class LabelRunner(TaskRunner):
     """Runner for the jheddings.github.label task."""
 
     def apply(self, state, params, check_mode=False):
-        mod = LabelManager(
+        mgr = LabelManager(
             token=params.pop("access_token", None),
             org=params.pop("organization", None),
             repo=params.pop("repository"),
@@ -98,10 +98,10 @@ class LabelRunner(TaskRunner):
         cfg = LabelConfig(**params)
 
         if state == "absent":
-            result = mod.absent(cfg.name, check_mode=check_mode)
+            result = mgr.absent(cfg.name, check_mode=check_mode)
 
         elif state == "present":
-            result = mod.present(cfg, check_mode=check_mode)
+            result = mgr.present(cfg, check_mode=check_mode)
 
         return result
 
