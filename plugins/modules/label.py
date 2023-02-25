@@ -1,5 +1,6 @@
 """Configure a Github repository label."""
 
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -9,6 +10,8 @@ from github.Label import Label
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 from ..module_utils.runner import TaskRunner
 
+label_color_re = re.compile(r"^[0-9a-fA-F]{6}$")
+
 
 @dataclass(eq=False)
 class LabelConfig(GithubObjectConfig):
@@ -17,6 +20,13 @@ class LabelConfig(GithubObjectConfig):
     name: str
     color: str = "cccccc"
     description: Optional[str] = None
+
+    def __post_init__(self):
+        if self.color is None:
+            raise ValueError("'color' cannot be None")
+
+        if not label_color_re.match(self.color):
+            raise ValueError("'color' must be a valid hex color")
 
 
 class LabelManager:
