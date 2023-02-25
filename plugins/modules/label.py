@@ -4,10 +4,10 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from github.GithubException import UnknownObjectException
 from github.Label import Label
 
-from ..module_utils.ghutil import GithubObjectConfig, ghconnect
+from ..module_utils.config import GithubObjectConfig
+from ..module_utils.manager import ResourceManager
 from ..module_utils.runner import TaskRunner
 
 label_color_re = re.compile(r"^[0-9a-fA-F]{6}$")
@@ -29,30 +29,23 @@ class LabelConfig(GithubObjectConfig):
             raise ValueError("'color' must be a valid hex color")
 
 
-class LabelManager:
+class LabelManager(ResourceManager):
     """Manage labels in a Github repository."""
 
-    def __init__(self, repo, token=None, org=None, base_url=None):
-        owner = ghconnect(token, organization=org, base_url=base_url)
-        self.repo = owner.get_repo(name=repo)
+    def __init__(self, token, name, repo, owner, base_url=None):
+        super().__init__(token=token, base_url=base_url)
 
-    def get(self, name) -> Label:
-        """Get the named label from this manager.
+        self.owner = owner
+        self.repo = repo
+        self.name = name
 
-        If the label does not exist, this method returns `None`.
-        """
-        label = None
+    def get(self) -> Label:
+        """Get the managed label from this manager."""
+        return self.api.get(f"/repos/{self.owner}/{self.repo}/labels/{self.name}")
 
-        try:
-            label = self.repo.get_label(name=name)
-        except UnknownObjectException:
-            return None
-
-        return label
-
-    def absent(self, name, check_mode=False):
+    def absent(self, check_mode=False):
         """Delete the named label."""
-        label = self.get(name=name)
+        label = self.get()
 
         if label is None:
             return {"changed": False}

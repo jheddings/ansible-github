@@ -6,7 +6,7 @@ from typing import Optional
 from github.GithubException import UnknownObjectException
 from github.Repository import Repository
 
-from ..module_utils.ghutil import GithubObjectConfig, ghconnect
+from ..module_utils.config import GithubObjectConfig, ghconnect
 from ..module_utils.runner import TaskRunner
 
 

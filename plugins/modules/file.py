@@ -9,7 +9,7 @@ from github.ContentFile import ContentFile
 from github.GithubException import UnknownObjectException
 from github.GithubObject import NotSet
 
-from ..module_utils.ghutil import GithubObjectConfig, ghconnect
+from ..module_utils.config import GithubObjectConfig, ghconnect
 from ..module_utils.runner import TaskRunner
 
 
