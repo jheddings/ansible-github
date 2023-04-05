@@ -60,4 +60,4 @@ class GithubObjectConfig:
 
     def asdict(self):
         """Return the current config as a dictionary, suitable for use in the Github API."""
-        return {k: v for k, v in self}
+        return dict(self)
