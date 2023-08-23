@@ -10,7 +10,7 @@ repository = "https://github.com/jheddings/ansible-github"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-ansible = "^8.2.0"
+ansible = "^8.3.0"
 pygithub = "^1.59.1"
 
 [tool.poetry.group.dev.dependencies]
