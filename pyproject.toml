@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ansible-github"
-version = "0.0.1"
+version = "0.0.0"
 description = "Ansible collection for working with Github."
 authors = ["jheddings <jheddings@gmail.com>"]
 license = "MIT"
