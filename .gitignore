@@ -6,6 +6,8 @@
 __pycache__
 *.py[cod]
 
+.ruff_cache
+
 .venv
 local.env
 
