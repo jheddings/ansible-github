@@ -183,13 +183,6 @@ def main():
         source={"type": "str"},
     )
 
-    #    mutually_exclusive=[
-    #        ("content", "source"),
-    #    ],
-    #    required_if=[
-    #        ("state", "present", ("source", "content"), True),
-    #    ],
-
     runner()
 
 
