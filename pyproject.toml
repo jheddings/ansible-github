@@ -11,7 +11,7 @@ repository = "https://github.com/jheddings/ansible-github"
 [tool.poetry.dependencies]
 python = "^3.10"
 ansible = "^9.2.0"
-pygithub = "^2.1.1"
+pygithub = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.0"
