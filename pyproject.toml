@@ -15,7 +15,7 @@ pygithub = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.1"
-ruff = "^0.2.1"
+ruff = "^0.2.2"
 
 [tool.ruff]
 line-length = 88
