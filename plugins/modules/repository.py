@@ -78,7 +78,7 @@ class RepositoryManager:
         """Archive the named repository."""
         repo = self.owner.get_repo(name=name)
 
-        if not repo.archived:
+        if repo.archived:
             return {"changed": False}
 
         if not check_mode:
