@@ -28,17 +28,18 @@ class RepositoryConfig(GithubObjectConfig):
     has_issues: Optional[bool] = None
     has_wiki: Optional[bool] = None
     has_projects: Optional[bool] = None
+    has_discussions: Optional[bool] = None
     has_downloads: Optional[bool] = None
 
     allow_merge_commit: Optional[bool] = None
     allow_squash_merge: Optional[bool] = None
     allow_rebase_merge: Optional[bool] = None
+    allow_auto_merge: Optional[bool] = None
 
     delete_branch_on_merge: Optional[bool] = None
 
     # TODO support these parameters
     #   - default_branch
-    #   - allow_auto_merge
 
 
 class RepositoryManager:
@@ -196,9 +197,11 @@ def main():
         has_issues={"type": "bool"},
         has_wiki={"type": "bool"},
         has_projects={"type": "bool"},
+        has_discussions={"type": "bool"},
         allow_merge_commit={"type": "bool"},
         allow_squash_merge={"type": "bool"},
         allow_rebase_merge={"type": "bool"},
+        allow_auto_merge={"type": "bool"},
         delete_branch_on_merge={"type": "bool"},
         # create-only parameters
         auto_init={"type": "bool"},
