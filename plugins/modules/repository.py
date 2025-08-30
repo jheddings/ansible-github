@@ -24,8 +24,6 @@ class RepositoryConfig(GithubObjectConfig):
     private: Optional[bool] = None
     homepage: Optional[str] = None
 
-    auto_init: Optional[bool] = None
-
     has_issues: Optional[bool] = None
     has_wiki: Optional[bool] = None
     has_projects: Optional[bool] = None
@@ -124,9 +122,6 @@ class RepositoryManager:
             result["changed"] = True
 
         if config != repo:
-            # remove create-only parameters
-            new_data.pop("auto_init", None)
-
             if not check_mode:
                 repo.edit(**new_data)
 
@@ -198,8 +193,6 @@ def main():
         allow_squash_merge={"type": "bool"},
         allow_rebase_merge={"type": "bool"},
         delete_branch_on_merge={"type": "bool"},
-        # create parameters
-        auto_init={"type": "bool"},
     )
 
     runner()
