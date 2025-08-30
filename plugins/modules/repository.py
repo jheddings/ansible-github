@@ -23,6 +23,7 @@ class RepositoryConfig(GithubObjectConfig):
     description: Optional[str] = None
     private: Optional[bool] = None
     homepage: Optional[str] = None
+    auto_init: Optional[bool] = None
 
     has_issues: Optional[bool] = None
     has_wiki: Optional[bool] = None
@@ -122,6 +123,10 @@ class RepositoryManager:
             result["changed"] = True
 
         if config != repo:
+            # remove create-only parameters
+            new_data.pop("auto_init", None)
+            new_data.pop("has_downloads", None)
+
             if not check_mode:
                 repo.edit(**new_data)
 
@@ -156,6 +161,9 @@ class RepositoryRunner(TaskRunner):
         elif state == "present":
             result = mgr.present(cfg, check_mode=check_mode)
 
+        else:
+            raise ValueError(f"Unknown state: {state}")
+
         return result
 
 
@@ -186,13 +194,15 @@ def main():
         homepage={"type": "str"},
         private={"type": "bool"},
         has_issues={"type": "bool"},
-        has_downloads={"type": "bool"},
         has_wiki={"type": "bool"},
         has_projects={"type": "bool"},
         allow_merge_commit={"type": "bool"},
         allow_squash_merge={"type": "bool"},
         allow_rebase_merge={"type": "bool"},
         delete_branch_on_merge={"type": "bool"},
+        # create-only parameters
+        auto_init={"type": "bool"},
+        has_downloads={"type": "bool"},
     )
 
     runner()
