@@ -10,7 +10,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      - name: Publish to Galaxy
-        uses: robertdebock/galaxy-action@1.2.1
+      - name: Set up Python
+        uses: actions/setup-python@v6.0.0
         with:
-          galaxy_api_key: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
+          python-version: 3.13
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.4.1
+      - name: Setup virtual environment
+        run: poetry install --with dev --no-interaction
+      - name: Build collection
+        run: poetry run ansible-galaxy collection build --output-path ./build
+      - name: Publish to Galaxy
+        run: |
+          poetry run ansible-galaxy collection publish \
+          --token "${{ secrets.ANSIBLE_GALAXY_TOKEN }}" ./build/*.tar.gz
