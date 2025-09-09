@@ -48,7 +48,7 @@ build: venv preflight
 
 
 .PHONY: release
-release: preflight github-reltag
+release: preflight
 	git tag "v$(APPVER)" main
 	git push origin "v$(APPVER)"
 	echo "Released $(APPNAME)-$(APPVER)"
