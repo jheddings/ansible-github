@@ -1,0 +1,17 @@
+
+name: Galaxy CD
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  galaxy-cd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Publish to Galaxy
+        uses: robertdebock/galaxy-action@1.2.1
+        with:
+          galaxy_api_key: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
