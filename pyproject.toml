@@ -9,7 +9,7 @@ packages = [{include = "plugins/modules"}]
 repository = "https://github.com/jheddings/ansible-github"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13.7"
 ansible = "^11.9.0"
 pygithub = "^2.8.1"
 
