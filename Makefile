@@ -24,12 +24,12 @@ all: venv build preflight
 
 .PHONY: venv
 venv:
-	poetry sync
+	uv sync --all-extras
 	$(WITH_VENV) pre-commit install --install-hooks --overwrite
 
 
-poetry.lock: venv
-	poetry lock
+uv.lock: venv
+	uv lock
 
 
 .PHONY: static-checks
@@ -48,10 +48,9 @@ build: venv preflight
 
 
 .PHONY: release
-release: preflight
+release: preflight build
 	git tag "v$(APPVER)" main
 	git push origin "v$(APPVER)"
-	echo "Released $(APPNAME)-$(APPVER)"
 
 
 .PHONY: clean
@@ -64,4 +63,4 @@ clean:
 .PHONY: clobber
 clobber: clean
 	$(WITH_VENV) pre-commit uninstall
-	poetry env remove --all
+	rm -Rf "$(BASEDIR)/.venv"
