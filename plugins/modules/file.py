@@ -3,7 +3,7 @@
 # https://pygithub.readthedocs.io/en/latest/examples/Repository.html#get-a-specific-content-file
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from github.ContentFile import ContentFile
 from github.GithubException import UnknownObjectException
@@ -18,8 +18,8 @@ class FileConfig(GithubObjectConfig):
     path: str
     message: str
 
-    content: Optional[Any] = None
-    source: Optional[str] = None
+    content: Any | None = None
+    source: str | None = None
 
     def __eq__(self, other):
         """Compare the current configuration to another object.

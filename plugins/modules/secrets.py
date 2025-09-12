@@ -1,7 +1,6 @@
 """Configure secrets for a Github repository."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 from ..module_utils.ghutil import GithubObjectConfig, ghconnect
 from ..module_utils.runner import TaskRunner
@@ -12,7 +11,7 @@ class SecretsConfig(GithubObjectConfig):
     """Configuration for secrets."""
 
     name: str
-    value: Optional[str] = None
+    value: str | None = None
 
 
 class SecretsManager:

@@ -2,7 +2,6 @@
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from github.GithubException import UnknownObjectException
 from github.Label import Label
@@ -19,7 +18,7 @@ class LabelConfig(GithubObjectConfig):
 
     name: str
     color: str = "cccccc"
-    description: Optional[str] = None
+    description: str | None = None
 
     def __post_init__(self):
         if self.color is None:

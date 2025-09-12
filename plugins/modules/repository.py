@@ -1,7 +1,6 @@
 """Configure a Github repository."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 from github.GithubException import UnknownObjectException
 from github.Repository import Repository
@@ -20,23 +19,23 @@ class RepositoryConfig(GithubObjectConfig):
     #   c) handled correctly for create vs edit
 
     name: str
-    description: Optional[str] = None
-    private: Optional[bool] = None
-    homepage: Optional[str] = None
-    auto_init: Optional[bool] = None
+    description: str | None = None
+    private: bool | None = None
+    homepage: str | None = None
+    auto_init: bool | None = None
 
-    has_issues: Optional[bool] = None
-    has_wiki: Optional[bool] = None
-    has_projects: Optional[bool] = None
-    has_discussions: Optional[bool] = None
-    has_downloads: Optional[bool] = None
+    has_issues: bool | None = None
+    has_wiki: bool | None = None
+    has_projects: bool | None = None
+    has_discussions: bool | None = None
+    has_downloads: bool | None = None
 
-    allow_merge_commit: Optional[bool] = None
-    allow_squash_merge: Optional[bool] = None
-    allow_rebase_merge: Optional[bool] = None
-    allow_auto_merge: Optional[bool] = None
+    allow_merge_commit: bool | None = None
+    allow_squash_merge: bool | None = None
+    allow_rebase_merge: bool | None = None
+    allow_auto_merge: bool | None = None
 
-    delete_branch_on_merge: Optional[bool] = None
+    delete_branch_on_merge: bool | None = None
 
     # TODO support these parameters
     #   - default_branch
