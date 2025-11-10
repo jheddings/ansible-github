@@ -52,7 +52,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ansible", specifier = ">=12.1.0,<13" },
+    { name = "ansible", specifier = ">=12.2.0,<13" },
     { name = "pygithub", specifier = ">=2.8.1,<3" },
 ]
 
