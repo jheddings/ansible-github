@@ -7,7 +7,7 @@ requires-python = ">=3.12,<4"
 readme = "README.md"
 license = "MIT"
 dependencies = [
-    "ansible>=12.1.0,<13",
+    "ansible>=12.2.0,<13",
     "pygithub>=2.8.1,<3",
 ]
 
