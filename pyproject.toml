@@ -16,7 +16,7 @@ Repository = "https://github.com/jheddings/ansible-github"
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.0,<5",
+    "pre-commit>=4.5.1,<5",
     "ruff>=0.14.9,<0.15",
 ]
 
